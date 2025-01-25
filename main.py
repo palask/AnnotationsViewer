@@ -258,14 +258,10 @@ class AnnotationNoteManager(Gtk.ApplicationWindow):
                 type = "N"
 
             parent_title = (
-                item["parentItem"]["title"]
-                if "parentItem" in item
-                else "Unknown Parent"
+                item["parentItem"]["title"] if "parentItem" in item else "N/A"
             )
             parent_authors = (
-                item["parentItem"]["authors"]
-                if "parentItem" in item
-                else "Unknown Parent"
+                item["parentItem"]["authors"] if "parentItem" in item else ""
             )
 
             # Retrieve group names from the group keys in 'groups'
@@ -274,10 +270,25 @@ class AnnotationNoteManager(Gtk.ApplicationWindow):
             # Create a custom row
             row = Gtk.ListBoxRow()
             row.data = item
+            row.set_margin_top(4)
+            row.set_margin_bottom(4)
 
-            label = Gtk.Label(
-                label=f"{display_text}\n{parent_title} ({parent_authors})\n[{type}] {group_names}",
-                xalign=0,
+            def escape_markup(text):
+                # Replace < and > with their HTML entities
+                text = text.replace("<", "&lt;").replace(">", "&gt;")
+                return text
+
+            display_text = escape_markup(display_text)
+            parent_title = escape_markup(parent_title)
+            parent_authors = escape_markup(parent_authors)
+            if parent_authors:
+                parent_string = f"{parent_title} ({parent_authors})"
+            else:
+                parent_string = parent_title
+
+            label = Gtk.Label(xalign=0)
+            label.set_markup(
+                f"<b>{display_text}</b>\n{parent_string}\n[{type}] {group_names}"
             )
             label.set_property("wrap", True)  # Enable line wrapping
             label.set_max_width_chars(70)  # Adjust the maximum width of the text

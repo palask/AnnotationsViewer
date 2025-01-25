@@ -258,6 +258,9 @@ def save_to_json(items, filename="items.json"):
         # Append the new items to the existing ones
         existing_items.extend(new_items)
 
+        # Create the directory if it doesn't exist
+        os.makedirs(os.path.dirname(filename), exist_ok=True)
+
         # Save the updated list back to the JSON file
         with open(filename, "w") as f:
             json.dump(existing_items, f, indent=4, ensure_ascii=False)
