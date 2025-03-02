@@ -251,7 +251,9 @@ class AnnotationNoteManager(Gtk.ApplicationWindow):
         # Add filtered items to the ListBox
         for item in filtered_items:
             if "annotationText" in item:
-                display_text = item["annotationText"].strip()
+                display_text = (
+                    item["annotationText"].strip() if item["annotationText"] else ""
+                )
                 type = "A"
             else:
                 display_text = item["note"].strip()
@@ -303,6 +305,8 @@ class AnnotationNoteManager(Gtk.ApplicationWindow):
         display_text = (
             item["annotationText"] if "annotationText" in item else item.get("note", "")
         )
+        if display_text is None:
+            display_text = ""
 
         # Check if any of the fields contain the search text
         return (

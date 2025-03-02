@@ -13,6 +13,11 @@ Run `python main.py` and follow the instructions.
 
 To update the data you can run `python main.py update`.
 
+## Limitations
+
+The annotations and notes are currently limited to those that are text-based.
+Areas and images are not supported.
+
 ## Screenshots
 
 ![Main view](img/main_view-2025-01-11.png)
