@@ -100,8 +100,9 @@ def is_env_file_invalid(filepath=".env") -> bool:
 
 def fetch_items(base_url, api_key):
     """Function to fetch Zotero items (metadata + annotations) from the API"""
+    print(f"Starting querying Zotero API for {base_url}")
     items = []
-    url = base_url
+    url = "https://api.zotero.org/" + base_url
     params = {
         "format": "json",
     }
@@ -116,7 +117,7 @@ def fetch_items(base_url, api_key):
         else:
             full_url = url
         req = urllib.request.Request(full_url, headers={"Zotero-API-Key": api_key})
-        print(f"Querying {full_url}")
+        print(f"\tQuerying {full_url}")
 
         try:
             # Make the request
@@ -159,26 +160,50 @@ def create_item_mapping(items):
         meta = item.get("meta")
         authors = meta.get("creatorSummary", "")
         parent_item = item_data.get("parentItem", "")
+        collections = item_data.get("collections", [])
         item_mapping[item_key] = {
             "itemTitle": item_title,
             "authors": authors,
             "parentItem": parent_item,
+            "collections": collections,
         }
     return item_mapping
 
 
-def get_parent_info(parent_item_key, item_mapping):
+def create_collection_mapping(collections):
+    """Function to create a mapping of collection keys to their titles"""
+    collection_mapping = {}
+    for collection in collections:
+        collection_data = collection.get("data", {})
+        collection_key = collection_data.get("key")
+        collection_title = collection_data.get("name")
+        collection_mapping[collection_key] = collection_title
+    return collection_mapping
+
+
+def get_collections_info(collection_keys, collection_mapping):
+    collections_info = []
+    for collection_key in collection_keys:
+        collection_title = collection_mapping.get(collection_key, None)
+        if collection_title:
+            collections_info.append(collection_title)
+    return collections_info
+
+
+def get_parent_info(parent_item_key, item_mapping, collection_mapping):
     while parent_item_key:
         parent_info = item_mapping.get(parent_item_key)
         if not parent_info:
             return None
         title = parent_info.get("itemTitle", "")
         authors = parent_info.get("authors", "")
+        collection_keys = parent_info.get("collections", [])
+        collections = get_collections_info(collection_keys, collection_mapping)
         parent_item_key = parent_info.get("parentItem")
-    return title, authors
+    return title, authors, collections
 
 
-def extract_annotations(items, item_mapping):
+def extract_annotations(items, item_mapping, collection_mapping):
     """Function to extract annotations from the items"""
     annotations = []
     print("Extracting annotations...")
@@ -186,15 +211,20 @@ def extract_annotations(items, item_mapping):
         item_data = item.get("data", {})  # Access the 'data' field
         if item_data.get("itemType") == "annotation":  # Only process annotations
             parent_item_key = item_data.get("parentItem")
-            parent_info = get_parent_info(parent_item_key, item_mapping)
+            parent_info = get_parent_info(
+                parent_item_key, item_mapping, collection_mapping
+            )
             if parent_info:
-                parent_item_title, parent_item_authors = parent_info
+                parent_item_title, parent_item_authors, parent_item_collections = (
+                    parent_info
+                )
                 annotation = {
                     "key": item_data.get("key"),
                     "parentItem": {
                         "key": parent_item_key,
                         "title": parent_item_title,
                         "authors": parent_item_authors,
+                        "collections": parent_item_collections,
                     },
                     "annotationText": item_data.get("annotationText"),
                     "annotationComment": item_data.get("annotationComment"),
@@ -205,7 +235,7 @@ def extract_annotations(items, item_mapping):
     return annotations
 
 
-def extract_notes(items, item_mapping):
+def extract_notes(items, item_mapping, collection_mapping):
     """Function to extract notes from the items"""
     notes = []
     print("Extracting notes...")
@@ -213,9 +243,13 @@ def extract_notes(items, item_mapping):
         item_data = item.get("data", {})  # Access the 'data' field
         if item_data.get("itemType") == "note":  # Only process notes
             parent_item_key = item_data.get("parentItem")
-            parent_info = get_parent_info(parent_item_key, item_mapping)
+            parent_info = get_parent_info(
+                parent_item_key, item_mapping, collection_mapping
+            )
             if parent_info:
-                parent_item_title, parent_item_authors = parent_info
+                parent_item_title, parent_item_authors, parent_item_collections = (
+                    parent_info
+                )
                 note_content = item_data.get("note", "")
                 # Remove HTML tags and decode any HTML entities (e.g., &amp;, &lt;)
                 plain_text_note = re.sub(
@@ -228,6 +262,7 @@ def extract_notes(items, item_mapping):
                         "key": parent_item_key,
                         "title": parent_item_title,
                         "authors": parent_item_authors,
+                        "collections": parent_item_collections,
                     },
                     "note": plain_text_note,
                 }
@@ -277,21 +312,24 @@ def annotations_exporter():
     api_vars = load_env_file()
     lib_type = api_vars["ZOTERO_LIBRARY_TYPE"]
     lib_id = api_vars["ZOTERO_LIBRARY_ID"]
-    base_url = f"https://api.zotero.org/{lib_type}s/{lib_id}/items"
+    items_url_part = f"{lib_type}s/{lib_id}/items"
+    collections_url_part = f"{lib_type}s/{lib_id}/collections"
 
     if is_env_file_invalid():
         print("The .env has invalid parameters. Adjust it or delete it to start again.")
         return 1
 
     api_key = api_vars["ZOTERO_API_KEY"]
-    items = fetch_items(base_url, api_key)
+    items = fetch_items(items_url_part, api_key)
+    collections = fetch_items(collections_url_part, api_key)
     if items:
         item_mapping = create_item_mapping(items)
+        collection_mapping = create_collection_mapping(collections)
 
-        annotations = extract_annotations(items, item_mapping)
+        annotations = extract_annotations(items, item_mapping, collection_mapping)
         save_to_json(annotations, "data/annotations.json")
 
-        notes = extract_notes(items, item_mapping)
+        notes = extract_notes(items, item_mapping, collection_mapping)
         save_to_json(notes, "data/notes.json")
     else:
         print("No items fetched. Exiting...")
