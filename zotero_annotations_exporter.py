@@ -150,7 +150,7 @@ def fetch_items(base_url, api_key):
 
 
 def create_item_mapping(items):
-    """Function to create a mapping of item keys to their titles"""
+    """Function to create a mapping of item keys to their titles, authors and parentItems"""
     item_mapping = {}
     for item in items:
         item_data = item.get("data", {})
@@ -259,7 +259,9 @@ def save_to_json(items, filename="items.json"):
         existing_items.extend(new_items)
 
         # Create the directory if it doesn't exist
-        os.makedirs(os.path.dirname(filename), exist_ok=True)
+        dirname = os.path.dirname(filename)
+        if dirname:
+            os.makedirs(dirname, exist_ok=True)
 
         # Save the updated list back to the JSON file
         with open(filename, "w") as f:
