@@ -229,6 +229,7 @@ def extract_annotations(items, item_mapping, collection_mapping):
                     "annotationText": item_data.get("annotationText"),
                     "annotationComment": item_data.get("annotationComment"),
                     "annotationColor": item_data.get("annotationColor"),
+                    "annotationPageLabel": item_data.get("annotationPageLabel"),
                 }
                 annotations.append(annotation)
     print("Finished extracting annotations")

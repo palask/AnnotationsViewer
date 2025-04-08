@@ -259,6 +259,9 @@ class AnnotationNoteManager(Gtk.ApplicationWindow):
                 display_text = item["note"].strip()
                 type = "N"
 
+            page_label_string = ""
+            if "annotationPageLabel" in item:
+                page_label_string = f", p. {item['annotationPageLabel']}"
             parent_title = (
                 item["parentItem"]["title"] if "parentItem" in item else "N/A"
             )
@@ -284,9 +287,9 @@ class AnnotationNoteManager(Gtk.ApplicationWindow):
             parent_title = escape_markup(parent_title)
             parent_authors = escape_markup(parent_authors)
             if parent_authors:
-                parent_string = f"{parent_title} ({parent_authors})"
+                parent_string = f"{parent_title} ({parent_authors}){page_label_string}"
             else:
-                parent_string = parent_title
+                parent_string = f"{parent_title}{page_label_string}"
 
             label = Gtk.Label(xalign=0)
             label.set_markup(
